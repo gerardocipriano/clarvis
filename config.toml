@@ -13,12 +13,12 @@ threshold     = 0.18   # RMS (0..1) that counts as a clap transient — raise if
 release       = 0.06   # RMS must fall below this before another clap is armed
 refractory_ms = 80     # min time between two distinct onsets
 min_gap_ms    = 150    # two claps closer than this are treated as one
-max_gap_ms    = 600    # two claps farther apart than this don't count
+max_gap_ms    = 1000   # two claps farther apart than this don't count
 cooldown_ms   = 3000   # ignore triggers for this long after firing
 
 [action]
 # Standalone case (no VSCode focused): argv list, --hold keeps the window open.
-terminal_cmd   = ["konsole", "--hold", "-e", "claude"]
+terminal_cmd   = ["konsole", "--hold", "-e", "/home/gerardp/.nvm/versions/node/v22.21.1/bin/claude"]
 # Active-window classes that mean "inside VSCode".
 vscode_classes = ["code", "code-insiders", "codium", "vscodium"]
 # What to run inside the VSCode integrated terminal.

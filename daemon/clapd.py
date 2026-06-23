@@ -71,12 +71,15 @@ DEFAULT_CONFIG = {
         "release": 0.06,         # RMS must drop below this before re-arming
         "refractory_ms": 80,     # ignore new onsets for this long after one
         "min_gap_ms": 150,       # min spacing between the two claps
-        "max_gap_ms": 600,       # max spacing between the two claps
+        "max_gap_ms": 1000,      # max spacing between the two claps
         "cooldown_ms": 3000,     # ignore triggers for this long after firing
     },
     "action": {
         # Standalone terminal command (non-VSCode case). argv-style list.
-        "terminal_cmd": ["konsole", "--hold", "-e", "claude"],
+        "terminal_cmd": [
+            "konsole", "--hold", "-e",
+            "/home/gerardp/.nvm/versions/node/v22.21.1/bin/claude",
+        ],
         # Window resourceClass values that mean "we are inside VSCode".
         "vscode_classes": ["code", "code-insiders", "codium", "vscodium"],
         # Command run inside the VSCode integrated terminal.
@@ -177,6 +180,7 @@ class WindowTracker:
         class Service(dbus.service.Object):
             @dbus.service.method(DBUS_NAME, in_signature="s")
             def SetActiveWindow(self, cls):  # noqa: N802 - D-Bus method name
+                print(f"[clarvis] SetActiveWindow({cls!r})", file=sys.stderr)
                 tracker._set(str(cls))
 
         DBusGMainLoop(set_as_default=True)
@@ -201,8 +205,9 @@ class WindowTracker:
 
 # Linux input event codes (see /usr/include/linux/input-event-codes.h)
 KEY_LEFTCTRL = 29
+KEY_LEFTSHIFT = 42
 KEY_ENTER = 28
-KEY_GRAVE = 41  # the backtick / `~` key
+KEY_RIGHTBRACE = 27  # ] key
 
 
 class Actuator:
@@ -237,10 +242,16 @@ class Actuator:
         run = self.cfg["action"]["vscode_run"]
         delay = self.cfg["action"]["vscode_open_delay_ms"] / 1000.0
         print("[clarvis] VSCode focused -> opening integrated terminal")
-        # Ctrl+` toggles the integrated terminal, which opens at the workspace root.
+        # Custom chord shortcut: Ctrl+] Ctrl+] (layout-independent keycode).
         if not self._ydotool(
-            "key", f"{KEY_LEFTCTRL}:1", f"{KEY_GRAVE}:1",
-            f"{KEY_GRAVE}:0", f"{KEY_LEFTCTRL}:0"
+            "key", f"{KEY_LEFTCTRL}:1", f"{KEY_RIGHTBRACE}:1",
+            f"{KEY_RIGHTBRACE}:0", f"{KEY_LEFTCTRL}:0"
+        ):
+            return
+        time.sleep(0.05)
+        if not self._ydotool(
+            "key", f"{KEY_LEFTCTRL}:1", f"{KEY_RIGHTBRACE}:1",
+            f"{KEY_RIGHTBRACE}:0", f"{KEY_LEFTCTRL}:0"
         ):
             return
         time.sleep(delay)

@@ -38,11 +38,11 @@ lives in one config file.
 microphone ──▶ clapd.py (RMS onset detector) ──▶ double clap?
                      │                                   │
                      │ which window is focused?          ▼
-   KWin script ──D-Bus──▶ zero.gc.clarvis      ┌──────────────┐
+    KWin script ──D-Bus──▶ zero.gc.clarvis      ┌──────────────┐
    (windowActivated)                              │  VSCode?     │
-                                                  ├──────────────┤
-                                          yes ──▶ ydotool: Ctrl+` + type "claude"
-                                           no ──▶ konsole --hold -e claude
+                                                   ├──────────────┤
+                                           yes ──▶ ydotool: Ctrl+] Ctrl+] + type "claude"
+                                            no ──▶ konsole --hold -e claude
 ```
 
 - **`daemon/clapd.py`** — captures audio (`sounddevice`), detects two sharp
@@ -52,7 +52,7 @@ microphone ──▶ clapd.py (RMS onset detector) ──▶ double clap?
   to the daemon on every focus change. KWin scripts can't write files, so this
   goes over D-Bus.
 - **`systemd/`** — user services for the daemon and for `ydotoold` (the uinput
-  helper that injects `Ctrl+`` and types into VSCode on Wayland).
+  helper that sends keyboard shortcuts and types into VSCode on Wayland).
 
 ## Requirements
 
@@ -122,6 +122,23 @@ systemctl --user status ydotoold     # uinput helper
 
 - **VSCode branch does nothing** → check `ydotoold` is running and you've
   re-logged-in after the `input` group change.
+
+### Italian (or non-US) keyboard layout
+
+The daemon sends `Ctrl+] Ctrl+]` (a layout-independent keycode) to toggle
+VSCode's integrated terminal. Add this keybinding to
+`~/.config/Code/User/keybindings.json` so VSCode responds:
+
+```json
+{
+  "key": "ctrl+] ctrl+]",
+  "command": "workbench.action.terminal.toggleTerminal"
+}
+```
+
+> **Important**: do **not** include a `"when"` clause — if restricted to
+> `terminal.active` the shortcut only works when the terminal is already
+> focused, defeating its purpose.
 - **Never triggers / triggers too easily** → re-run `--calibrate` and adjust
   `threshold`.
 - **Active window always falls back to Konsole** → confirm the KWin tracker is

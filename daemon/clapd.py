@@ -204,46 +204,43 @@ class WindowTracker:
 
 
 # --------------------------------------------------------------------------- #
-# Sound feedback (JARVIS chime)
+# Sound feedback (Highway to Hell riff)
 # --------------------------------------------------------------------------- #
 
-# JARVIS chime: three ascending notes (A major triad) + echo
-_CHIME_NOTES = [880.0, 1108.73, 1318.51]  # A5, C#6, E6
-_CHIME_NOTE_MS = 280
-_CHIME_GAP_MS = 60
-_CHIME_TAIL_MS = 600
+# Power-chord frequencies (root + fifth) for the Highway to Hell main riff.
+_HW_CHORDS = {
+    "E": (164.81, 246.94),  # E3 + B3
+    "D": (146.83, 220.00),  # D3 + A3
+    "C": (130.81, 196.00),  # C3 + G3
+}
+# Riff pattern (eighth notes):  E E E E D D C C D D E E  × 2 ≈ 5 s
+_HW_PATTERN = (
+    ["E"] * 4 + ["D"] * 2 + ["C"] * 2 + ["D"] * 2 + ["E"] * 4
+) * 2
+_HW_BPM = 114
 _SOUND_SAMPLERATE = 44100
 
 
-def _jarvis_chime(volume: float) -> np.ndarray:
-    """Synthesize the iconic JARVIS 3-note rising chime at *volume* (0..1)."""
+def _highway_riff(volume: float) -> np.ndarray:
+    """Synthesize ~5 s of the AC/DC Highway to Hell riff at *volume* (0..1)."""
     sr = _SOUND_SAMPLERATE
-    note_len = int(sr * _CHIME_NOTE_MS / 1000)
-    gap_len = int(sr * _CHIME_GAP_MS / 1000)
-    tail_len = int(sr * _CHIME_TAIL_MS / 1000)
+    eighth_ms = 60000 / _HW_BPM / 2  # ms per eighth note
+    note_len = int(sr * eighth_ms / 1000)
     parts: list[np.ndarray] = []
 
-    for freq in _CHIME_NOTES:
+    for chord in _HW_PATTERN:
+        root, fifth = _HW_CHORDS[chord]
         t = np.arange(note_len, dtype=np.float64) / sr
-        # Fundamental + 2nd + 3rd harmonic for a bell-like timbre
-        tone = (np.sin(2 * np.pi * freq * t)
-                + 0.4 * np.sin(2 * np.pi * freq * 2 * t)
-                + 0.15 * np.sin(2 * np.pi * freq * 3 * t))
-        # Envelope: fast attack, slower decay
-        env = np.exp(-3.0 * t / (note_len / sr))
+        # Distorted-guitar approximation: square wave ≈ odd harmonics
+        tone = (np.sign(np.sin(2 * np.pi * root * t))
+                + np.sign(np.sin(2 * np.pi * fifth * t)) * 0.6
+                + np.sign(np.sin(2 * np.pi * root * 3 * t)) * 0.25)
+        # Palm-mute envelope: instant attack, fast decay
+        env = np.exp(-12.0 * t / (note_len / sr))
         tone *= env
         parts.append(tone.astype(np.float32))
-        parts.append(np.zeros(gap_len, dtype=np.float32))
 
-    # Combine, then add a long fade-out tail
-    chime = np.concatenate(parts)
-    tail = np.zeros(tail_len, dtype=np.float32)
-    echo = chime * 0.25
-    echo = np.concatenate([np.zeros(len(chime) - len(echo), dtype=np.float32)
-                           if len(chime) > len(echo) else np.zeros(0), echo])
-    tail_chime = np.concatenate([chime, tail])
-    tail_echo = np.concatenate([echo, tail])
-    out = tail_chime + tail_echo
+    out = np.concatenate(parts)
     # Normalise peak amplitude to volume
     peak = np.max(np.abs(out))
     if peak > 0:
@@ -252,13 +249,13 @@ def _jarvis_chime(volume: float) -> np.ndarray:
 
 
 class SoundPlayer:
-    """Plays the JARVIS chime asynchronously on trigger."""
+    """Plays the Highway to Hell riff asynchronously on trigger."""
 
     def __init__(self, cfg: dict):
         s = cfg.get("sound", {})
         self.enabled = s.get("enabled", True)
         self.volume = s.get("volume", 0.3)
-        self._chime = _jarvis_chime(self.volume)
+        self._chime = _highway_riff(self.volume)
 
     def play(self) -> None:
         if not self.enabled or sd is None:

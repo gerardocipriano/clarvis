@@ -117,8 +117,8 @@ for the annotated defaults). Most-tuned keys:
 
 ## Sound
 
-On every trigger clarvis plays the iconic **JARVIS 3-note chime** (synthesised in
-RAM — no audio files). Toggle with:
+On every trigger clarvis plays ⚡ **5 seconds of the Highway to Hell riff**
+(AC/DC — synthesised in RAM, no audio files). Toggle with:
 
 ```bash
 clarvis sound off   # silent trigger

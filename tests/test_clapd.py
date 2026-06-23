@@ -6,7 +6,6 @@ audio import in clapd is soft, and the detector is driven by injected time).
 import clapd
 import pytest
 
-
 # --------------------------------------------------------------------------- #
 # Config
 # --------------------------------------------------------------------------- #

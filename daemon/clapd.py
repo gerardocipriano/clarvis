@@ -355,7 +355,7 @@ def run(cfg: dict, calibrate: bool) -> None:
     # Bounded queue of (rms, capture_time). Timestamp at capture so detection
     # timing is immune to consumer lag; drop oldest-on-full so a stalled
     # consumer can never grow memory without bound.
-    rms_q: "queue.Queue[tuple[float, float]]" = queue.Queue(maxsize=64)
+    rms_q: queue.Queue[tuple[float, float]] = queue.Queue(maxsize=64)
 
     def callback(indata, frames, time_info, status):  # runs on audio thread
         if status:

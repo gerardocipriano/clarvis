@@ -16,6 +16,10 @@ min_gap_ms    = 150    # two claps closer than this are treated as one
 max_gap_ms    = 1000   # two claps farther apart than this don't count
 cooldown_ms   = 3000   # ignore triggers for this long after firing
 
+[sound]
+enabled = true
+volume  = 0.3    # 0..1, 0.3 ≈ medium-low
+
 [action]
 # Standalone case (no VSCode focused): argv list, --hold keeps the window open.
 terminal_cmd   = ["konsole", "--hold", "-e", "/home/gerardp/.nvm/versions/node/v22.21.1/bin/claude"]

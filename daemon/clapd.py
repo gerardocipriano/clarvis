@@ -74,6 +74,10 @@ DEFAULT_CONFIG = {
         "max_gap_ms": 1000,      # max spacing between the two claps
         "cooldown_ms": 3000,     # ignore triggers for this long after firing
     },
+    "sound": {
+        "enabled": True,         # play JARVIS chime on trigger
+        "volume": 0.3,           # 0..1, 0.3 ≈ medium-low
+    },
     "action": {
         # Standalone terminal command (non-VSCode case). argv-style list.
         "terminal_cmd": [
@@ -197,6 +201,76 @@ class WindowTracker:
         Service(bus, DBUS_PATH)
         print(f"[clarvis] D-Bus service {DBUS_NAME} ready")
         GLib.MainLoop().run()
+
+
+# --------------------------------------------------------------------------- #
+# Sound feedback (JARVIS chime)
+# --------------------------------------------------------------------------- #
+
+# JARVIS chime: three ascending notes (A major triad) + echo
+_CHIME_NOTES = [880.0, 1108.73, 1318.51]  # A5, C#6, E6
+_CHIME_NOTE_MS = 280
+_CHIME_GAP_MS = 60
+_CHIME_TAIL_MS = 600
+_SOUND_SAMPLERATE = 44100
+
+
+def _jarvis_chime(volume: float) -> np.ndarray:
+    """Synthesize the iconic JARVIS 3-note rising chime at *volume* (0..1)."""
+    sr = _SOUND_SAMPLERATE
+    note_len = int(sr * _CHIME_NOTE_MS / 1000)
+    gap_len = int(sr * _CHIME_GAP_MS / 1000)
+    tail_len = int(sr * _CHIME_TAIL_MS / 1000)
+    parts: list[np.ndarray] = []
+
+    for freq in _CHIME_NOTES:
+        t = np.arange(note_len, dtype=np.float64) / sr
+        # Fundamental + 2nd + 3rd harmonic for a bell-like timbre
+        tone = (np.sin(2 * np.pi * freq * t)
+                + 0.4 * np.sin(2 * np.pi * freq * 2 * t)
+                + 0.15 * np.sin(2 * np.pi * freq * 3 * t))
+        # Envelope: fast attack, slower decay
+        env = np.exp(-3.0 * t / (note_len / sr))
+        tone *= env
+        parts.append(tone.astype(np.float32))
+        parts.append(np.zeros(gap_len, dtype=np.float32))
+
+    # Combine, then add a long fade-out tail
+    chime = np.concatenate(parts)
+    tail = np.zeros(tail_len, dtype=np.float32)
+    echo = chime * 0.25
+    echo = np.concatenate([np.zeros(len(chime) - len(echo), dtype=np.float32)
+                           if len(chime) > len(echo) else np.zeros(0), echo])
+    tail_chime = np.concatenate([chime, tail])
+    tail_echo = np.concatenate([echo, tail])
+    out = tail_chime + tail_echo
+    # Normalise peak amplitude to volume
+    peak = np.max(np.abs(out))
+    if peak > 0:
+        out = out / peak * volume
+    return out
+
+
+class SoundPlayer:
+    """Plays the JARVIS chime asynchronously on trigger."""
+
+    def __init__(self, cfg: dict):
+        s = cfg.get("sound", {})
+        self.enabled = s.get("enabled", True)
+        self.volume = s.get("volume", 0.3)
+        self._chime = _jarvis_chime(self.volume)
+
+    def play(self) -> None:
+        if not self.enabled or sd is None:
+            return
+        threading.Thread(target=self._play_sync, daemon=True).start()
+
+    def _play_sync(self) -> None:
+        try:
+            sd.play(self._chime, _SOUND_SAMPLERATE)
+            sd.wait()
+        except Exception as exc:
+            print(f"[clarvis] sound playback failed: {exc}", file=sys.stderr)
 
 
 # --------------------------------------------------------------------------- #
@@ -380,6 +454,7 @@ def run(cfg: dict, calibrate: bool) -> None:
     tracker = WindowTracker()
     if not calibrate:
         tracker.start()
+    sound_player = SoundPlayer(cfg)
     actuator = Actuator(cfg, tracker)
 
     # Run the action off the consumer thread: launching terminals / driving
@@ -387,6 +462,7 @@ def run(cfg: dict, calibrate: bool) -> None:
     def trigger() -> None:
         if calibrate:
             return
+        sound_player.play()
         threading.Thread(target=actuator.fire, name="clarvis-fire",
                          daemon=True).start()
 

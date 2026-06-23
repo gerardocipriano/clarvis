@@ -110,8 +110,22 @@ for the annotated defaults). Most-tuned keys:
 | `detection.threshold` | RMS level that counts as a clap (raise to reduce false positives) |
 | `detection.min_gap_ms` / `max_gap_ms` | accepted spacing between the two claps |
 | `detection.cooldown_ms` | ignore further triggers for this long after firing |
+| `sound.enabled` | play JARVIS chime on trigger (`true` / `false`) |
+| `sound.volume` | 0–1, 0.3 ≈ medium-low |
 | `action.terminal_cmd` | command for the standalone (non-VSCode) case |
 | `action.vscode_classes` | window classes treated as VSCode |
+
+## Sound
+
+On every trigger clarvis plays the iconic **JARVIS 3-note chime** (synthesised in
+RAM — no audio files). Toggle with:
+
+```bash
+clarvis sound off   # silent trigger
+clarvis sound on    # re-enable
+```
+
+Or by editing `sound.enabled` in the config file.
 
 ## Logs & troubleshooting
 
@@ -139,6 +153,7 @@ VSCode's integrated terminal. Add this keybinding to
 > **Important**: do **not** include a `"when"` clause — if restricted to
 > `terminal.active` the shortcut only works when the terminal is already
 > focused, defeating its purpose.
+
 - **Never triggers / triggers too easily** → re-run `--calibrate` and adjust
   `threshold`.
 - **Active window always falls back to Konsole** → confirm the KWin tracker is

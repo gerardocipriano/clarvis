@@ -9,10 +9,14 @@
 #   clarvis calibrate  live RMS meter to tune the clap threshold
 #   clarvis enable     start automatically at login (default after install)
 #   clarvis disable    don't start at login
+#   clarvis sound on   play JARVIS chime on trigger
+#   clarvis sound off  silent trigger
 set -euo pipefail
 
 SVC=clarvis.service
 DAEMON="$HOME/.local/share/clarvis/clapd.py"
+
+CONF="$HOME/.config/clarvis/config.toml"
 
 case "${1:-help}" in
     off)       systemctl --user stop "$SVC";    echo "clarvis: OFF (not listening)";;
@@ -23,7 +27,19 @@ case "${1:-help}" in
     calibrate) exec python3 "$DAEMON" --calibrate;;
     enable)    systemctl --user enable --now "$SVC"; echo "clarvis: will start at login";;
     disable)   systemctl --user disable --now "$SVC"; echo "clarvis: won't start at login";;
+    sound)
+        case "${2:-}" in
+            on)
+                sed -i 's/^enabled = false/enabled = true/' "$CONF" 2>/dev/null || true
+                systemctl --user restart "$SVC"
+                echo "clarvis: sound ON";;
+            off)
+                sed -i 's/^enabled = true/enabled = false/' "$CONF" 2>/dev/null || true
+                systemctl --user restart "$SVC"
+                echo "clarvis: sound OFF";;
+            *)   echo "Usage: clarvis sound on|off";;
+        esac;;
     *)
-        sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//'
         ;;
 esac

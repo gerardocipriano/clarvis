@@ -117,8 +117,8 @@ for the annotated defaults). Most-tuned keys:
 
 ## Sound
 
-On every trigger clarvis plays ⚡ **5 seconds of the Highway to Hell riff**
-(AC/DC — synthesised in RAM, no audio files). Toggle with:
+On every trigger clarvis plays ⚡ **5 seconds of the original Highway to Hell**
+riff (AC/DC) via `paplay`. Toggle with:
 
 ```bash
 clarvis sound off   # silent trigger

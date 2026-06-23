@@ -22,6 +22,7 @@ sudo pacman -S --needed --noconfirm \
 # 2. Daemon + config + control command.
 say "installing daemon to $SHARE"
 install -Dm644 "$REPO_DIR/daemon/clapd.py" "$SHARE/clapd.py"
+install -Dm644 "$REPO_DIR/sound/highway_to_hell.wav" "$SHARE/highway_to_hell.wav"
 install -Dm755 "$REPO_DIR/bin/clarvis" "$HOME/.local/bin/clarvis"
 case ":$PATH:" in
     *":$HOME/.local/bin:"*) ;;

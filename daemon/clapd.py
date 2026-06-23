@@ -207,65 +207,30 @@ class WindowTracker:
 # Sound feedback (Highway to Hell riff)
 # --------------------------------------------------------------------------- #
 
-# Power-chord frequencies (root + fifth) for the Highway to Hell main riff.
-_HW_CHORDS = {
-    "E": (164.81, 246.94),  # E3 + B3
-    "D": (146.83, 220.00),  # D3 + A3
-    "C": (130.81, 196.00),  # C3 + G3
-}
-# Riff pattern (eighth notes):  E E E E D D C C D D E E  × 2 ≈ 5 s
-_HW_PATTERN = (
-    ["E"] * 4 + ["D"] * 2 + ["C"] * 2 + ["D"] * 2 + ["E"] * 4
-) * 2
-_HW_BPM = 114
-_SOUND_SAMPLERATE = 44100
-
-
-def _highway_riff(volume: float) -> np.ndarray:
-    """Synthesize ~5 s of the AC/DC Highway to Hell riff at *volume* (0..1)."""
-    sr = _SOUND_SAMPLERATE
-    eighth_ms = 60000 / _HW_BPM / 2  # ms per eighth note
-    note_len = int(sr * eighth_ms / 1000)
-    parts: list[np.ndarray] = []
-
-    for chord in _HW_PATTERN:
-        root, fifth = _HW_CHORDS[chord]
-        t = np.arange(note_len, dtype=np.float64) / sr
-        # Distorted-guitar approximation: square wave ≈ odd harmonics
-        tone = (np.sign(np.sin(2 * np.pi * root * t))
-                + np.sign(np.sin(2 * np.pi * fifth * t)) * 0.6
-                + np.sign(np.sin(2 * np.pi * root * 3 * t)) * 0.25)
-        # Palm-mute envelope: instant attack, fast decay
-        env = np.exp(-12.0 * t / (note_len / sr))
-        tone *= env
-        parts.append(tone.astype(np.float32))
-
-    out = np.concatenate(parts)
-    # Normalise peak amplitude to volume
-    peak = np.max(np.abs(out))
-    if peak > 0:
-        out = out / peak * volume
-    return out
+_SOUND_DIR = Path(__file__).resolve().parent
+_SOUND_WAV = _SOUND_DIR / "highway_to_hell.wav"
 
 
 class SoundPlayer:
-    """Plays the Highway to Hell riff asynchronously on trigger."""
+    """Plays the original Highway to Hell riff asynchronously on trigger."""
 
     def __init__(self, cfg: dict):
         s = cfg.get("sound", {})
         self.enabled = s.get("enabled", True)
         self.volume = s.get("volume", 0.3)
-        self._chime = _highway_riff(self.volume)
 
     def play(self) -> None:
-        if not self.enabled or sd is None:
+        if not self.enabled or not _SOUND_WAV.is_file():
             return
         threading.Thread(target=self._play_sync, daemon=True).start()
 
     def _play_sync(self) -> None:
         try:
-            sd.play(self._chime, _SOUND_SAMPLERATE)
-            sd.wait()
+            subprocess.Popen(
+                ["paplay", "--volume", str(int(self.volume * 65536)),
+                 str(_SOUND_WAV)],
+                start_new_session=True,
+            )
         except Exception as exc:
             print(f"[clarvis] sound playback failed: {exc}", file=sys.stderr)
 

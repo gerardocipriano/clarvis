@@ -218,19 +218,38 @@ class SoundPlayer:
         s = cfg.get("sound", {})
         self.enabled = s.get("enabled", True)
         self.volume = s.get("volume", 0.3)
+        self._chime: np.ndarray | None = None
+        self._samplerate = 48000
+        self._load()
+
+    def _load(self) -> None:
+        if not _SOUND_WAV.is_file():
+            return
+        try:
+            import wave
+            with wave.open(str(_SOUND_WAV), "rb") as wf:
+                self._samplerate = wf.getframerate()
+                frames = wf.readframes(wf.getnframes())
+            raw = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
+            # Convert to mono if stereo by averaging channels
+            if len(raw) > 0:
+                raw = raw / 32768.0 * self.volume
+                self._chime = raw
+        except Exception as exc:
+            print(f"[clarvis] failed to load sound file: {exc}",
+                  file=sys.stderr)
 
     def play(self) -> None:
-        if not self.enabled or not _SOUND_WAV.is_file():
+        if not self.enabled or self._chime is None:
             return
         threading.Thread(target=self._play_sync, daemon=True).start()
 
     def _play_sync(self) -> None:
+        if sd is None:
+            return
         try:
-            subprocess.Popen(
-                ["paplay", "--volume", str(int(self.volume * 65536)),
-                 str(_SOUND_WAV)],
-                start_new_session=True,
-            )
+            sd.play(self._chime, self._samplerate)
+            sd.wait()
         except Exception as exc:
             print(f"[clarvis] sound playback failed: {exc}", file=sys.stderr)
 

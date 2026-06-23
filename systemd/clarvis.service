@@ -1,0 +1,22 @@
+[Unit]
+Description=clarvis — clap-to-Claude listener
+Documentation=https://github.com/gerardocipriano/clarvis
+# Needs the graphical (Wayland) session for KWin/D-Bus, plus audio.
+After=pipewire.service sound.target graphical-session.target ydotoold.service
+Wants=ydotoold.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/share/clarvis/clapd.py
+# ydotool (used only for the VSCode branch) talks to ydotoold over this socket.
+Environment=YDOTOOL_SOCKET=%t/ydotool.sock
+Restart=on-failure
+RestartSec=2
+# Note on hardening: the daemon spawns a terminal that runs `claude`, which
+# writes under $HOME (~/.claude). Namespace sandboxing (ProtectHome/ProtectSystem)
+# is inherited by that child and would break it, so it is deliberately omitted.
+NoNewPrivileges=true
+
+[Install]
+WantedBy=graphical-session.target

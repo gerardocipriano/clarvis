@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Id": "clarvis-tracker",
+        "Name": "clarvis active window tracker",
+        "Description": "Reports the active window's class to the clarvis daemon over D-Bus.",
+        "Authors": [{ "Name": "Gerardo Cipriano" }],
+        "Version": "1.0",
+        "License": "MIT",
+        "EnabledByDefault": true
+    },
+    "KPackageStructure": "KWin/Script",
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js"
+}

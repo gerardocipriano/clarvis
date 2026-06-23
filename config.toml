@@ -1,0 +1,27 @@
+# clarvis configuration — copied to ~/.config/clarvis/config.toml by install.sh.
+# Every value here mirrors a default in daemon/clapd.py; omit a key to keep its
+# default. Tune `detection` with:  clapd.py --calibrate
+
+[audio]
+samplerate = 16000   # Hz, mono
+block_ms   = 20      # analysis block size (ms)
+# device   = "default"   # input device name or index; omit for system default
+
+[detection]
+threshold     = 0.18   # RMS (0..1) that counts as a clap transient — raise if
+                       # false positives, lower if claps are missed
+release       = 0.06   # RMS must fall below this before another clap is armed
+refractory_ms = 80     # min time between two distinct onsets
+min_gap_ms    = 150    # two claps closer than this are treated as one
+max_gap_ms    = 600    # two claps farther apart than this don't count
+cooldown_ms   = 3000   # ignore triggers for this long after firing
+
+[action]
+# Standalone case (no VSCode focused): argv list, --hold keeps the window open.
+terminal_cmd   = ["konsole", "--hold", "-e", "claude"]
+# Active-window classes that mean "inside VSCode".
+vscode_classes = ["code", "code-insiders", "codium", "vscodium"]
+# What to run inside the VSCode integrated terminal.
+vscode_run     = "claude"
+# Wait after Ctrl+` before typing, so the terminal is ready (ms).
+vscode_open_delay_ms = 450

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# clarvis control — easy, memorable on/off (and friends) for the daemon.
+#
+#   clarvis off        stop listening now
+#   clarvis on         start listening now
+#   clarvis status     is it listening?
+#   clarvis restart    reload after editing config
+#   clarvis logs       follow the daemon log
+#   clarvis calibrate  live RMS meter to tune the clap threshold
+#   clarvis enable     start automatically at login (default after install)
+#   clarvis disable    don't start at login
+set -euo pipefail
+
+SVC=clarvis.service
+DAEMON="$HOME/.local/share/clarvis/clapd.py"
+
+case "${1:-help}" in
+    off)       systemctl --user stop "$SVC";    echo "clarvis: OFF (not listening)";;
+    on)        systemctl --user start "$SVC";   echo "clarvis: ON (listening)";;
+    restart)   systemctl --user restart "$SVC"; echo "clarvis: restarted";;
+    status)    systemctl --user status "$SVC" --no-pager;;
+    logs)      journalctl --user -u "$SVC" -f;;
+    calibrate) exec python3 "$DAEMON" --calibrate;;
+    enable)    systemctl --user enable --now "$SVC"; echo "clarvis: will start at login";;
+    disable)   systemctl --user disable --now "$SVC"; echo "clarvis: won't start at login";;
+    *)
+        sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//'
+        ;;
+esac

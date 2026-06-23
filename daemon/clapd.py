@@ -199,7 +199,7 @@ class WindowTracker:
                   "VSCode detection disabled", file=sys.stderr)
             return
         Service(bus, DBUS_PATH)
-        print(f"[clarvis] D-Bus service {DBUS_NAME} ready")
+        print(f"[clarvis] D-Bus service {DBUS_NAME} ready", flush=True)
         GLib.MainLoop().run()
 
 
@@ -229,12 +229,15 @@ class SoundPlayer:
             import wave
             with wave.open(str(_SOUND_WAV), "rb") as wf:
                 self._samplerate = wf.getframerate()
+                nchannels = wf.getnchannels()
                 frames = wf.readframes(wf.getnframes())
             raw = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
-            # Convert to mono if stereo by averaging channels
-            if len(raw) > 0:
-                raw = raw / 32768.0 * self.volume
-                self._chime = raw
+            if len(raw) == 0:
+                return
+            # Convert multi-channel to mono by averaging
+            raw = raw.reshape(-1, nchannels).mean(axis=1)
+            raw = raw / 32768.0 * self.volume
+            self._chime = raw
         except Exception as exc:
             print(f"[clarvis] failed to load sound file: {exc}",
                   file=sys.stderr)
@@ -287,7 +290,7 @@ class Actuator:
     def _open_standalone(self) -> None:
         cmd = self.cfg["action"]["terminal_cmd"]
         print(f"[clarvis] launching standalone terminal: "
-              f"{' '.join(map(str, cmd))}")
+              f"{' '.join(map(str, cmd))}", flush=True)
         try:
             subprocess.Popen(cmd, start_new_session=True)
         except FileNotFoundError:
@@ -296,7 +299,7 @@ class Actuator:
     def _open_in_vscode(self) -> None:
         run = self.cfg["action"]["vscode_run"]
         delay = self.cfg["action"]["vscode_open_delay_ms"] / 1000.0
-        print("[clarvis] VSCode focused -> opening integrated terminal")
+        print("[clarvis] VSCode focused -> opening integrated terminal", flush=True)
         # Custom chord shortcut: Ctrl+] Ctrl+] (layout-independent keycode).
         if not self._ydotool(
             "key", f"{KEY_LEFTCTRL}:1", f"{KEY_RIGHTBRACE}:1",
@@ -461,7 +464,8 @@ def run(cfg: dict, calibrate: bool) -> None:
                 callback=callback,
             ):
                 print("[clarvis] calibrate mode — clap away (Ctrl+C to quit)"
-                      if calibrate else "[clarvis] listening for double claps")
+                      if calibrate else "[clarvis] listening for double claps",
+                      flush=True)
                 backoff = 1.0
                 while not stop.is_set():
                     try:
@@ -476,7 +480,7 @@ def run(cfg: dict, calibrate: bool) -> None:
                   file=sys.stderr)
             stop.wait(backoff)
             backoff = min(backoff * 2, 30.0)
-    print("\n[clarvis] shutting down")
+    print("\n[clarvis] shutting down", flush=True)
 
 
 def main() -> None:

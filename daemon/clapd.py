@@ -84,8 +84,7 @@ DEFAULT_CONFIG = {
     "action": {
         # Standalone terminal command (non-VSCode case). argv-style list.
         "terminal_cmd": [
-            "konsole", "--hold", "-e",
-            "/home/gerardp/.nvm/versions/node/v22.21.1/bin/claude",
+            "konsole", "--hold", "-e", "claude",
         ],
         # Window resourceClass values that mean "we are inside VSCode".
         "vscode_classes": ["code", "code-insiders", "codium", "vscodium"],

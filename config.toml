@@ -24,7 +24,7 @@ volume  = 0.3    # 0..1, 0.3 ≈ medium-low
 
 [action]
 # Standalone case (no VSCode focused): argv list, --hold keeps the window open.
-terminal_cmd   = ["konsole", "--hold", "-e", "/home/gerardp/.nvm/versions/node/v22.21.1/bin/claude"]
+terminal_cmd   = ["konsole", "--hold", "-e", "claude"]
 # Active-window classes that mean "inside VSCode".
 vscode_classes = ["code", "code-insiders", "codium", "vscodium"]
 # What to run inside the VSCode integrated terminal.

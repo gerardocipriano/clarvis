@@ -379,9 +379,19 @@ class ClapDetector:
 
     def process(self, rms: float, now: float) -> None:
         if self.verbose:
-            bar = "#" * int(min(rms, 1.0) * 50)
-            mark = " <ONSET" if (self.armed and rms >= self.threshold) else ""
-            print(f"\rrms={rms:0.3f} |{bar:<50}|{mark}", end="", flush=True)
+            width = 50
+            level = int(min(rms, 1.0) * width)
+            thr_pos = min(int(self.threshold * width), width - 1)
+            # Draw the live level as '#', with a '|' marking the clap threshold.
+            # A clap should push the bar PAST the '|', then fall back.
+            cells = ["#" if i < level else ("|" if i == thr_pos else " ")
+                     for i in range(width)]
+            attack = rms - self.prev_rms
+            is_clap = (self.armed and rms >= self.threshold
+                       and attack >= self.min_attack)
+            mark = "  <- CLAP!" if is_clap else ""
+            print(f"\rlevel {rms:0.3f}  attack {attack:+0.3f}  "
+                  f"[{''.join(cells)}]{mark}   ", end="", flush=True)
 
         # A clap is a sharp attack: not just loud, but a steep rise from the
         # previous block. This is what separates a clap from a sustained loud
@@ -410,7 +420,8 @@ class ClapDetector:
                 self.last_trigger = now
                 self.last_onset = None
                 if self.verbose:
-                    print(f"\n[clarvis] DOUBLE CLAP (gap={gap*1000:.0f}ms)")
+                    print(f"\n  >>> DOUBLE CLAP (gap={gap*1000:.0f}ms) — "
+                          "this is what triggers Claude\n")
                 self.on_trigger()
                 return
         self.last_onset = now
@@ -419,6 +430,32 @@ class ClapDetector:
 # --------------------------------------------------------------------------- #
 # Audio loop
 # --------------------------------------------------------------------------- #
+
+def _calibrate_help(det: "ClapDetector") -> str:
+    """One-time header that explains how to read the calibrate meter."""
+    return (
+        "\n"
+        "  clarvis calibrate — clap and watch the meter, then tune config.toml\n"
+        "  " + "-" * 62 + "\n"
+        f"    level  = how loud the mic is right now (0..1)\n"
+        f"    attack = how sharply it jumped vs the last moment (clap = high)\n"
+        f"    [....|....]  the '|' marks your threshold ({det.threshold:.2f}); "
+        "a clap pushes the bar past it\n"
+        "\n"
+        "  What to look for:\n"
+        "    • Clap once: you should see  <- CLAP!  and the bar spike past '|'\n"
+        "    • Clap twice (within ~0.15–1.0s): you should see  >>> DOUBLE CLAP\n"
+        "      That double clap is what actually launches Claude.\n"
+        "\n"
+        "  Tuning (edit ~/.config/clarvis/config.toml, then `clarvis restart`):\n"
+        f"    • Claps missed?      lower threshold ({det.threshold:.2f}) "
+        f"or min_attack ({det.min_attack:.2f})\n"
+        f"    • Noise triggers it? raise threshold ({det.threshold:.2f}) "
+        f"or min_attack ({det.min_attack:.2f})\n"
+        "\n"
+        "  Press Ctrl+C when done.\n"
+    )
+
 
 def run(cfg: dict, calibrate: bool) -> None:
     if sd is None:
@@ -477,9 +514,10 @@ def run(cfg: dict, calibrate: bool) -> None:
                 device=device,
                 callback=callback,
             ):
-                print("[clarvis] calibrate mode — clap away (Ctrl+C to quit)"
-                      if calibrate else "[clarvis] listening for double claps",
-                      flush=True)
+                if calibrate:
+                    print(_calibrate_help(detector), flush=True)
+                else:
+                    print("[clarvis] listening for double claps", flush=True)
                 backoff = 1.0
                 while not stop.is_set():
                     try:

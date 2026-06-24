@@ -10,11 +10,13 @@ block_ms   = 20      # analysis block size (ms)
 [detection]
 threshold     = 0.18   # RMS (0..1) that counts as a clap transient — raise if
                        # false positives, lower if claps are missed
+min_attack    = 0.10   # min RMS rise vs previous block — a clap is a sharp
+                       # attack; raise to reject more non-clap loud sounds
 release       = 0.06   # RMS must fall below this before another clap is armed
 refractory_ms = 80     # min time between two distinct onsets
 min_gap_ms    = 150    # two claps closer than this are treated as one
 max_gap_ms    = 1000   # two claps farther apart than this don't count
-cooldown_ms   = 3000   # ignore triggers for this long after firing
+cooldown_ms   = 20000  # ignore triggers for this long after firing (≥20s)
 
 [sound]
 enabled = true

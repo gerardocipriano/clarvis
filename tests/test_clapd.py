@@ -41,6 +41,9 @@ def test_load_config_overlays_user_values(tmp_path):
 def make_detector(**overrides):
     """Build a detector with a trigger counter, using fast default timings."""
     cfg = clapd.load_config(None)
+    # Detection tests use absolute times ~10s; pin a short cooldown so they
+    # stay independent of the (long, production) default cooldown_ms.
+    cfg["detection"]["cooldown_ms"] = 1000
     cfg["detection"].update(overrides)
     fired = []
     det = clapd.ClapDetector(cfg, on_trigger=lambda: fired.append(True))
@@ -98,6 +101,18 @@ def test_refractory_collapses_one_clap_into_single_onset():
         (0.5, 10.04),
     ])
     assert fired == []
+
+
+def test_gradual_rise_is_not_a_clap():
+    # A sustained loud sound (speech/music) that ramps over threshold without a
+    # sharp attack must not register as a clap onset.
+    det, fired = make_detector(min_attack=0.10)
+    feed(det, [
+        (0.10, 10.00),  # ramp up, below threshold
+        (0.19, 10.02),  # crosses threshold but attack 0.09 < 0.10 -> ignored
+        (0.27, 10.04),  # still rising slowly, attack 0.08 -> ignored
+    ])
+    assert det.last_onset is None
 
 
 def test_cooldown_blocks_immediate_second_trigger():

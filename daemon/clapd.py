@@ -68,11 +68,14 @@ DEFAULT_CONFIG = {
     },
     "detection": {
         "threshold": 0.18,       # RMS level (0..1) that counts as a transient
+        "min_attack": 0.10,      # min RMS rise vs previous block — a clap is a
+                                 # sharp attack; speech/music ramp up slowly and
+                                 # fail this, so it rejects non-clap loud sounds
         "release": 0.06,         # RMS must drop below this before re-arming
         "refractory_ms": 80,     # ignore new onsets for this long after one
         "min_gap_ms": 150,       # min spacing between the two claps
         "max_gap_ms": 1000,      # max spacing between the two claps
-        "cooldown_ms": 3000,     # ignore triggers for this long after firing
+        "cooldown_ms": 20000,    # ignore triggers for this long after firing
     },
     "sound": {
         "enabled": True,         # play JARVIS chime on trigger
@@ -123,6 +126,9 @@ def validate_config(cfg: dict) -> None:
         raise ValueError(
             f"detection.release ({d['release']}) must be <= "
             f"threshold ({d['threshold']})")
+    if d["min_attack"] < 0:
+        raise ValueError(
+            f"detection.min_attack ({d['min_attack']}) must be >= 0")
     if not isinstance(cfg["action"]["terminal_cmd"], list) or \
             not cfg["action"]["terminal_cmd"]:
         raise ValueError("action.terminal_cmd must be a non-empty list")
@@ -356,6 +362,7 @@ class ClapDetector:
     def __init__(self, cfg: dict, on_trigger, verbose: bool = False):
         d = cfg["detection"]
         self.threshold = d["threshold"]
+        self.min_attack = d["min_attack"]
         self.release = d["release"]
         self.refractory = d["refractory_ms"] / 1000.0
         self.min_gap = d["min_gap_ms"] / 1000.0
@@ -368,6 +375,7 @@ class ClapDetector:
         self.disarmed_at = 0.0        # when the current disarm started
         self.last_onset = None        # None = no previous clap yet
         self.last_trigger = 0.0
+        self.prev_rms = 0.0           # previous block RMS, for attack detection
 
     def process(self, rms: float, now: float) -> None:
         if self.verbose:
@@ -375,7 +383,13 @@ class ClapDetector:
             mark = " <ONSET" if (self.armed and rms >= self.threshold) else ""
             print(f"\rrms={rms:0.3f} |{bar:<50}|{mark}", end="", flush=True)
 
-        if self.armed and rms >= self.threshold:
+        # A clap is a sharp attack: not just loud, but a steep rise from the
+        # previous block. This is what separates a clap from a sustained loud
+        # sound (speech, music) that crosses the threshold gradually.
+        attack = rms - self.prev_rms
+        self.prev_rms = rms
+
+        if self.armed and rms >= self.threshold and attack >= self.min_attack:
             self._onset(now)
         elif not self.armed:
             quiet = rms < self.release

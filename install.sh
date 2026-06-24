@@ -17,7 +17,9 @@ say() { printf '\033[1;36m[clarvis]\033[0m %s\n' "$*"; }
 # 1. Dependencies (Arch/Manjaro). --needed skips already-installed packages.
 say "installing system packages (sudo)…"
 sudo pacman -S --needed --noconfirm \
-    python python-numpy python-sounddevice python-dbus python-gobject ydotool
+    python python-numpy python-dbus python-gobject ydotool
+
+sudo pamac install python-sounddevice --noconfirm
 
 # 2. Daemon + config + control command.
 say "installing daemon to $SHARE"
